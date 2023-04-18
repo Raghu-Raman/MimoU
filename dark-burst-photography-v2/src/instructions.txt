@@ -1,0 +1,42 @@
+./adb devices 
+./adb push saved_model_v2_light_8_res_2_encoder_1_no_map_fn_no_norm_yuv_std.tflite /data/local/tmp/
+
+#run 
+
+
+#CPU summary
+
+./adb shell taskset f0 /data/local/tmp/android_aarch64_benchmark_model   --graph=/data/local/tmp/ab_model_yuv_ed_3072_4096_384_12_24_48.tflite /data/local/tmp/  --num_threads=4  --num_runs=2 
+
+#CPU summary -- with xnnpack
+
+./adb shell taskset f0 /data/local/tmp/android_aarch64_benchmark_model   --graph=/data/local/tmp/model_256_256_752889.tflite  --num_threads=4  --num_runs=2  --use_xnnpack=true
+
+#CPU summary -- with nnapi
+./adb shell taskset f0 /data/local/tmp/android_aarch64_benchmark_model   --graph=/data/local/tmp/model_256_256_752889.tflite  --num_threads=4  --num_runs=2  --use_nnapi=true
+
+#CPU profiling 
+./adb shell taskset f0 /data/local/tmp/android_aarch64_benchmark_model   --graph=/data/local/tmp/model_1536_2048_8_16_32.tflite --num_threads=4 --enable_op_profiling=true --num_runs=2
+
+
+#GPU summary 
+./adb shell taskset f0 /data/local/tmp/android_aarch64_benchmark_model   --graph=/data/local/tmp/saved_model_v2_light_4_res_2_encoder_1_no_map_fn_no_norm_yuv_std_no_batch.tflite --num_threads=4  --num_runs=4   --use_gpu=true --gpu_backend=cl  --gpu_precision_loss_allowed=true
+
+./adb shell taskset f0 /data/local/tmp/android_aarch64_benchmark_model   --graph=/data/local/tmp/ab_model_yuv_ed_3072_4096_384_12_24_48.tflite   --num_threads=4  --num_runs=2   --use_gpu=true --use_nnapi=true --nnapi_accelerator_name=qi-gpu
+
+adb shell taskset f0 /data/local/tmp/android_aarch64_benchmark_model   --graph=/data/local/tmp/saved_model_v2_light_12_res_2_encoder_2_no_map_fn_no_norm_yuv.tflite   --num_threads=4  --num_runs=2   --use_gpu=true --use_nnapi=true --nnapi_accelerator_name=qi-gpu
+
+
+#GPU summary -- with xnnpack
+./adb shell taskset f0 /data/local/tmp/android_aarch64_benchmark_model   --graph=/data/local/tmp/model_256_256_752889.tflite  --num_threads=4  --num_runs=2  --use_xnnpack=true --use_gpu=true
+
+#GPU summary -- with nnapi
+./adb shell taskset f0 /data/local/tmp/android_aarch64_benchmark_model   --graph=/data/local/tmp/model_256_256_752889.tflite  --num_threads=4  --num_runs=2  --use_nnapi=true --use_gpu=true
+
+
+#GPU summary profiling 
+
+./adb shell taskset f0 /data/local/tmp/android_aarch64_benchmark_model   --graph=/data/local/tmp/model_256_256_752889.tflite --num_threads=4 --enable_op_profiling=true --num_runs=2 --use_gpu=true
+
+
+adb shell taskset F0 /data/local/tmp/performance_profiling /data/local/tmp/saved_model_v2_light_4_res_2_encoder_1_no_map_fn_no_norm_yuv_std_no_batch.tflite
