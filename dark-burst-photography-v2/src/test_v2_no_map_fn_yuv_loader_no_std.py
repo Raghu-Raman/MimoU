@@ -9,7 +9,7 @@ import rawpy
 import glob
 import dbputils
 import cv2
-from rear_net_dataloader import *
+from net_dataloader_test import *
 from skimage.metrics import structural_similarity, peak_signal_noise_ratio
 
 
@@ -27,7 +27,7 @@ method = "burst_l1_res_se_motion_cx"
 d_id = 1 ## 1 for test, 2 for validation
 result_name = "burst_l1_res_se_motion_cx"
 d_set = dbputils.d_set_for_id(d_id)
-checkpoint_dir = '../checkpoint/Sony/%s/'%method
+# checkpoint_dir = '../checkpoint/Sony/%s/'%method
 result_dir = '../results/'
 gt_result_dir = '../results_one_step_v2_light_12_res_2_encoder_2_no_map_fn_no_norm_yuv/%s/ground_truth/'%(d_set)
 #saved_model_dir='../saved_model_v2_light_4_res_2_encoder_1_no_map_fn_no_norm/YUV_-20_0_4_mean_2k_no_batch_11_30/%s/'% method_name
@@ -192,12 +192,10 @@ test_id=0
 for data in test_loader:
 	
 	parent_dir = "../results/"
-
 	mode = 0o777
 	y_temp = data[2]
 	uv_temp = data[3]
-	print("y_temp.shape",y_temp.shape)
-
+	
 	uv_temp = np.float32(uv_temp)
 	uv_temp_patches = np.minimum(uv_temp, 1.0)
 	y_temp = np.float32(y_temp)
@@ -215,7 +213,10 @@ for data in test_loader:
 	uv_temp_patches3 = uv_temp_patches[:,:,:,2:6]
 	y_temp_patches3 = tf.image.resize(y_temp_patches3,[y_temp_patches3.shape[1]//4,y_temp_patches3.shape[2]//4])
 	uv_temp_patches3 = tf.image.resize(uv_temp_patches3,[uv_temp_patches3.shape[1]//4,uv_temp_patches3.shape[2]//4])
-	
+	string_value = data[4].numpy()
+	string_value_temp = data[5].numpy()
+	decoded_path = string_value.decode('utf-8')
+	decoded_path_folder =string_value_temp.decode('utf-8')
 	output_y,output_uv = v2_model([y_temp_patches1,uv_temp_patches1,y_temp_patches2,uv_temp_patches2,y_temp_patches3,uv_temp_patches3], training=False)
 	ev_0_y = data[2][:,:,:,1:2]
 	ev_0_uv = data[3][:,:,:,2:4]
@@ -223,24 +224,29 @@ for data in test_loader:
 	ev_m20_uv = data[3][:,:,:,0:2]
 	ev_04_y = data[2][:,:,:,2:3]
 	ev_04_uv = data[3][:,:,:,4:6]
+	gt_y = data[0][:,:,:,0:1]
+	gt_uv = data[1][:,:,:,0:2]
+	arcSoft_y = data[0][:,:,:,1:2]
+	arcSoft_uv = data[1][:,:,:,2:4]
 	
+
 	output_y = np.minimum(output_y, 1)
 	output_uv = np.minimum(output_uv, 1)
-	gt_y = np.minimum(data[0], 1)
-	gt_uv = np.minimum(data[1], 1)
+	gt_y = np.minimum(gt_y, 1)
+	gt_uv = np.minimum(gt_uv, 1)
+	arcSoft_y = np.minimum(arcSoft_y,1)
+	arcSoft_uv = np.minimum(arcSoft_uv,1)
 	ev_0_y = np.minimum(ev_0_y, 1)
 	ev_0_uv =  np.minimum(ev_0_uv, 1)
 	ev_m20_y = np.minimum(ev_m20_y, 1)
 	ev_m20_uv =  np.minimum(ev_m20_uv, 1)
 	ev_04_y = np.minimum(ev_04_y, 1)
 	ev_04_uv =  np.minimum(ev_04_uv, 1)
-	print("ev_0_uv.shape",ev_0_uv.shape)
-	print("ev_0_y.shape",ev_0_y.shape)	
-	print("data[0].shape",data[0].shape)
-	print("data[1].shape",data[1].shape)
-
+	
 	y_gt = gt_y[0,:,:,:]
 	uv_gt = gt_uv[0,:,:,:]
+	y_arcsoft = arcSoft_y[0,:,:,:]
+	uv_arcsoft = arcSoft_uv[0,:,:,:]
 	time_ = time.time() - st
 	y_output = output_y[0, :, :, :]
 	uv_output = output_uv[0, :, :, :]
@@ -251,6 +257,7 @@ for data in test_loader:
 	ev_04y_output = ev_04_y[0, :, :, :]
 	ev_04uv_output = ev_04_uv[0, :, :, :]
 	output = YUV420toYUV444((y_output + 1) * 255.0 / 2.0, (uv_output + 1) * 255.0 / 2.0)
+	arcSoft = YUV420toYUV444((y_arcsoft + 1) * 255.0 / 2.0, (uv_arcsoft + 1) * 255.0 / 2.0)
 	samsung = YUV420toYUV444((y_gt+ 1) * 255.0 / 2.0, (uv_gt + 1) * 255.0 / 2.0)
 	ev0 = YUV420toYUV444((ev_0y_output + 1) * 255.0 / 2.0, (ev_0uv_output + 1) * 255.0 / 2.0)
 	evm20 = YUV420toYUV444((ev_m20y_output + 1) * 255.0 / 2.0, (ev_m20uv_output + 1) * 255.0 / 2.0)
@@ -293,20 +300,22 @@ for data in test_loader:
 
 	temp = cv2.cvtColor(np.uint8(output), cv2.COLOR_YUV2BGR)
 	temp_samsung  = cv2.cvtColor(np.uint8(samsung), cv2.COLOR_YUV2BGR)
+	temp_arcsoft  = cv2.cvtColor(np.uint8(arcSoft), cv2.COLOR_YUV2BGR)
 	temp_ev0  = cv2.cvtColor(np.uint8(ev0), cv2.COLOR_YUV2BGR)
 	temp_ev04  = cv2.cvtColor(np.uint8(ev04), cv2.COLOR_YUV2BGR)
 	temp_evm20  = cv2.cvtColor(np.uint8(evm20), cv2.COLOR_YUV2BGR)
 	# print(tf.reduce_sum(temp))
-	directory =str(test_id) + "_Output_folder"
+	directory =decoded_path_folder
 	path = os.path.join(parent_dir, directory)
 	if not os.path.exists(path):
 		os.mkdir(path, mode)
-	print(path)
 	resultPath = str(path) + "/"
-	print(resultPath)
+	tempstr = decoded_path+"OUTPUT"+".jpg"
+	tempstr1 = decoded_path+"GT"+".jpg"
     
-	cv2.imwrite(resultPath + "%05d_00_out.jpg" % (test_id), temp)
-	cv2.imwrite(resultPath + "arcsoft.jpg", temp_samsung)
+	cv2.imwrite(resultPath + tempstr, temp)
+	cv2.imwrite(resultPath + "arcsoft.jpg", temp_arcsoft)
+	cv2.imwrite(resultPath + "GT.jpg", temp_samsung)
 	cv2.imwrite(resultPath + "ev0.jpg", temp_ev0)
 	cv2.imwrite(resultPath + "ev4.jpg", temp_ev04)
 	cv2.imwrite(resultPath + "ev-20.jpg", temp_evm20)
